@@ -100,6 +100,7 @@ multiclass_code/
 ```mermaid
 graph TD
     subgraph 基本模型訓練
+    direction TB
     A[資料前處理 and <br/>五折交叉驗證分割] --> B{選擇方法}
     B -->|PSO_TRENB| C[PSO 優化<br/>Naive Bayes]
     B -->|Bagging| D[Bootstrap 抽樣<br/>訓練 Naive Bayes]
@@ -117,6 +118,7 @@ graph TD
     end
     
     subgraph 集成挑選
+    direction TB
     K[讀取基本模型資訊]
     K --> L[Gurobi 整數規劃<br/>進行集成挑選]
     L --> M[評估挑選後模型<br/>測試集準確率]
