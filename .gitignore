@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+pyproject.toml
+uv.lock
+*.csv
+accuracy_result/
+accuracy_trend/
+training_accuracies/
+training_pred_vec/
+data_filter_reserved/
+data_filter_res/
+temp_models/
+selection_result/
+datasets/
+data_filter_var.xlsx
+class_balance_summary.xlsx
+.python-version
