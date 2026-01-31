@@ -98,7 +98,7 @@ multiclass_code/
 
 ## 實驗流程
 ```mermaid
-flowchart TD
+graph TD
     subgraph 基本模型訓練
     A[資料前處理 and <br/>五折交叉驗證分割] --> B{選擇方法}
     B -->|PSO_TRENB| C[PSO 優化<br/>Naive Bayes]
