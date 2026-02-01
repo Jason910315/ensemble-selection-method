@@ -223,11 +223,10 @@ if __name__ == "__main__":
 
     # 初始化最佳化模型物件
     OptimizeModel = OptimizeModel()
-    dataset_list = ["Iris"]
 
     for dataset in dataset_list:
         try:
-            result = OptimizeModel.run_optimize_model(dataset, "PSO_TRENB")
+            result = OptimizeModel.run_optimize_model(dataset, "PSO_Bagging")
         except Exception as e:
             error_detail = traceback.format_exc()
             print(f"資料集 {dataset} 最佳化模型求解發生錯誤: {error_detail}")

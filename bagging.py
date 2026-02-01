@@ -36,15 +36,15 @@ def naive_bayes_classifier(df_train, attributes, class_nums):
     # p_Xi_Cj_dict 的格式為 {特徵名稱: 儲存特徵類別組合機率的 DataFrame}
     return prior, p_Xi_Cj_dict, att_value_counts
 
-def predict(df_train, df_predict, prior, p_Xi_Cj_dict, att_value_counts):
+def predict(nj, df_predict, prior, p_Xi_Cj_dict, att_value_counts):
 
     """
-    根據 df_train 得到的機率，預測 df_predict 的樣本類別 (多類別)
+    Parmas:
+        nj : 類別數量 (指的是被抽樣後的子訓練集的類別數量)
     Return:
         1. 樣本的預測向量，shape = (N, C)，裡面每個元素為 1d array，裡面有 C 個元素，代表 C 個類別的預測與否，1/0
         2. 所有樣本實際預測類別，shape = (N, )
-    """
-    nj = df_train['class'].value_counts()  
+    """ 
     pred_class = []
     pred_vector = []
     # 預測每個樣本
@@ -147,20 +147,19 @@ def cross_validation_with_ensemble(file_path, target_column, model_config, datas
                 # 這步驟代表 bagging 的取後放回抽樣，陣列裡的每個元素即為抽到的訓練集樣本索引
                 sampled_indices = random.choices(range(N), k = N)
                 bag_train_data = train_data.iloc[sampled_indices]
-
-                fold_data["bag_train_data"] = bag_train_data
+                nj = bag_train_data['class'].value_counts()
 
                 # 計算訓練資料集的先驗機率、似然機率
                 prior, p_Xi_Cj_dict, att_value_counts = naive_bayes_classifier(bag_train_data, attributes, class_nums)
-                bagging_models.append((prior, p_Xi_Cj_dict, att_value_counts))
+                bagging_models.append((prior, p_Xi_Cj_dict, att_value_counts, nj))  # nj 為子訓練集的類別數量
 
                 # 對原始訓練集的預測
-                pred_vector, pred_class = predict(bag_train_data, train_data, prior, p_Xi_Cj_dict, att_value_counts)
+                pred_vector, pred_class = predict(nj, train_data, prior, p_Xi_Cj_dict, att_value_counts)
                 training_accuracies.append(np.mean(y_train == pred_class))  # 記錄訓練集準確率
                 data_filter_table[f"fold_{fold + 1}"].append(pred_vector)  # 儲存該基本模型對所有樣本的預測向量
                 
                 # 測試集預測
-                pred_vector, pred_class = predict(bag_train_data, test_data, prior, p_Xi_Cj_dict, att_value_counts)
+                pred_vector, pred_class = predict(nj, test_data, prior, p_Xi_Cj_dict, att_value_counts)
                 model_test_predictions[:,nums] = pred_class  # 基本模型 i 對所有測試樣本的預測結果
 
                 nums += 1
