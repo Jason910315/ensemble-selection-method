@@ -16,8 +16,9 @@ class OptimizeModel:
     
     # 載入基本模型，靜態方法，不需要實例化
     @staticmethod
-    def load_models(dataset_name, model_folder):
-        model_path = os.path.join(model_folder, f"{dataset_name}_models.pkl")
+    def load_models(method, dataset_name):
+        path = config.PATH
+        model_path = os.path.join(path[method]["model_path"], f"{dataset_name}_models.pkl")
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"模型文件 {model_path} 不存在")
         with open(model_path, 'rb') as f:
@@ -32,8 +33,12 @@ class OptimizeModel:
         """
         path = config.PATH.get(ensemble_method)
 
-        # 載入基本模型
-        models = self.load_models(dataset_name, path["model_path"])
+        # 載入基本模型，bagging 模型會存其他額外的訓練測試資訊，所以也要載入
+        if ensemble_method == "Bagging":
+            models = self.load_models("Bagging", dataset_name)
+        else:
+            models = self.load_models(ensemble_method, dataset_name)
+        bagging_models = self.load_models("Bagging", dataset_name)
 
         # 讀取訓練集預測結果
         with open(path["training_pred_vector_path"], 'r', encoding='utf-8') as f:
@@ -47,7 +52,7 @@ class OptimizeModel:
         print(f"------------------------------------------------------\nStart optimizing {dataset_name} model...")
         # 取出該資料集的第 fold 折的預測向量，shape = (N, model)
         for fold, pred_array in pred_vector[dataset_name].items():
-            fold_model = models[fold]
+            fold_model = bagging_models[fold]
             m = self.model_config["num_base_models"]
             b = self.model_config['selection_model_nums']
             num_samples = len(pred_array)
@@ -151,8 +156,9 @@ class OptimizeModel:
         avg_test_accuracy = results_df['test_accuracy'].mean()
         avg_gap = results_df['gap'].mean()
 
-        with open(path["es_result_path"], mode='a', encoding='utf-8', newline='') as csvfile:
+        with open(path["es_result_path"], mode='w', encoding='utf-8', newline='') as csvfile:
             writer = csv.writer(csvfile)    
+            writer.writerow(["Dataset", "Obj", "Sample Nums", "Test Accuracy", "Gap"])
             if model.status == GRB.OPTIMAL or model.status == GRB.TIME_LIMIT:
                 writer.writerow([dataset_name, avg_obj, avg_sample_nums, avg_test_accuracy, avg_gap])
             else:
@@ -169,13 +175,16 @@ class OptimizeModel:
 
         path = config.PATH.get(ensemble_method)
         # 載入基本模型
-        models = self.load_models(dataset_name, path["model_path"])
+        models = self.load_models(ensemble_method, dataset_name)
+        bagging_models = self.load_models("Bagging", dataset_name)
 
         # 載入原始資料集
         df = pd.read_csv(os.path.join(self.parent_path, "datasets", "離散化資料集", "多類別", f"{dataset_name}.csv"))
+        attributes = df.columns[:-1]
 
         fold_model = models[fold]
         base_models = fold_model[ensemble_method]
+        bagging_fold_model = bagging_models[fold]
 
         # 取得 X 資訊，drop 掉 class 欄位
         X = df.drop(columns = ["class"]).values
@@ -184,15 +193,18 @@ class OptimizeModel:
             le = LabelEncoder()
             X[:, i] = le.fit_transform(X[:, i]) 
             
-        # 取出測試集資訊
-        test_index = fold_model["test_index"]
+        # 取出測試集資訊，資訊都存在 bagging 模型中
+        test_index = bagging_fold_model["test_index"]
         X_test = X[test_index]
         y_test = df["class"].iloc[test_index]
-        class_nums = fold_model["class_nums"]
+        class_nums = bagging_fold_model["class_nums"]
+
+        # bagging 預測要額外定義
+        test_data = pd.DataFrame(X_test, columns=attributes)
+        test_data['class'] = y_test
 
         # 每個基本模型對測試集樣本的預測
         model_test_predictions = np.zeros((len(y_test), self.model_config['selection_model_nums']), dtype=int)    # 單一折數中基本模型的預測結果，(樣本數, 模型數)
-            
         # 使用集成挑選後的模型預測
         for i, select_idx in enumerate(selected_models):
             # 不同集成方法要用不同預測手段
@@ -203,11 +215,20 @@ class OptimizeModel:
                 model_test_predictions[:, i] = pred_class  # 基本模型 i 對所有測試樣本的預測結果
             
             elif ensemble_method == "Bagging":
-                bag_train_data = fold_model["bag_train_data"]
-                test_data = fold_model["test_data"]
-                prior, p_Xi_Cj_dict, att_value_counts = base_models[select_idx]
-                pred_vector, pred_class = bagging.predict(bag_train_data, test_data, prior, p_Xi_Cj_dict, att_value_counts)
+                prior, p_Xi_Cj_dict, att_value_counts, nj = base_models[select_idx]
+                pred_vector, pred_class = bagging.predict(nj, test_data, prior, p_Xi_Cj_dict, att_value_counts)
                 model_test_predictions[:, i] = pred_class  # 基本模型 i 對所有測試樣本的預測結果
+
+            elif ensemble_method == "PSO_Bagging":
+                # 代表被挑到的是 PSO 的模型
+                if len(base_models[select_idx]) == 2:
+                    prior, likelihood = base_models[select_idx]
+                    pred_vector, pred_class = PSO_TRENB.predict(X_test, prior, likelihood)
+                # 代表被挑到的是 Bagging 的模型
+                elif len(base_models[select_idx]) == 4:
+                    prior, p_Xi_Cj_dict, att_value_counts, nj = base_models[select_idx]
+                    pred_vector, pred_class = bagging.predict(nj, test_data, prior, p_Xi_Cj_dict, att_value_counts)
+                model_test_predictions[:, i] = pred_class 
                 
             # 集成所有基本模型的預測成為最終預測 (投票)
             ensemble_test_predictions = np.apply_along_axis(

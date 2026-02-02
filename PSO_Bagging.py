@@ -11,60 +11,7 @@ from tqdm import tqdm
 import check_data_filter
 import data_filtering
 import config
-
-def pso_predict(X, prior, likelihood):
-    N = len(X)
-    F = len(likelihood) 
-    # 預測每個樣本，先初始 posterior
-    posterior = np.tile(prior, (N, 1))   # 重複貼上 N 次 prior，形成一個 (N, C) 的矩陣
-
-    for f in range(F):
-        posterior *= likelihood[f][:, X[:,f]].T 
-
-    # 多類別投票一樣取最大值，且為了解決平手問題，每個票數都加上隨機雜訊
-    max_prob_index = np.argmax(posterior, axis = 1)
-
-    # 生成預測的向量
-    pred_vector = np.zeros_like(posterior, dtype=int)
-    pred_vector[np.arange(len(pred_vector)), max_prob_index] = 1   # 將每個樣本機率最大的位置設為 1，其他位置設為 0
-
-    # 實際預測的類別結果
-    pred_class = max_prob_index
-    return np.array(pred_vector), np.array(pred_class)
-
-def bagging_predict(nj, df_predict, prior, p_Xi_Cj_dict, att_value_counts):
-    pred_class = []
-    pred_vector = []
-    # 預測每個樣本
-    for i in range(len(df_predict)):
-        attributes = df_predict.iloc[i, :-1]   # 每個樣本的特徵值不同，要個別取出
-        max_prob = -np.inf
-        pred_class_i = None   # 樣本 i 的預測類別
-        vector_i = np.zeros_like(prior, dtype=int)   # 樣本 i 的預測向量
-
-        # 計算第 i 個樣本的特徵值組合在 Cj 類別下發生機率
-        for Cj in nj.index:
-            class_condition = 1  # class condition 就是類別下特徵組合機率
-            # 計算每個特徵值在樣本 i 的出現機率
-            for att in attributes.index:
-                if pd.notna(df_predict[att][i]):  # 忽略NaN機率值
-                    try:
-                        # 取出特徵 att 的 likelihood DataFrame，再取出 Cj 欄位下，att 值的對應機率
-                        class_condition *= p_Xi_Cj_dict[att][Cj][attributes[att]]
-                    except KeyError:
-                        class_condition *= 1 / (nj[Cj] + att_value_counts[att])  # 如果值不在訓練集中，使用拉普拉斯平滑
-            # 後驗機率
-            posterior_prob = prior[Cj] * class_condition
-           
-            if posterior_prob > max_prob:
-                pred_class_i = Cj
-                max_prob = posterior_prob
-        
-        vector_i[pred_class_i] = 1
-        pred_vector.append(vector_i)
-        pred_class.append(pred_class_i)
-    
-    return np.array(pred_vector), np.array(pred_class)
+import PSO_TRENB, bagging
 
 # 載入模型
 def load_models(method, dataset_name):
@@ -107,6 +54,8 @@ def test_save_models(file_path, target_column, model_config):
     pso_trenb_models = load_models("PSO_TRENB", dataset_name)
     bagging_models = load_models("Bagging", dataset_name)
 
+    fold_models = {}  # 儲存每個折數的混合模型
+
     for fold in range(k):
         pso_fold_data = pso_trenb_models[f"fold_{fold + 1}"]
         bagging_fold_data = bagging_models[f"fold_{fold + 1}"]
@@ -121,6 +70,7 @@ def test_save_models(file_path, target_column, model_config):
         X_train = X[train_index]
         y_train = y[train_index]
 
+        # bagging 預測格是要額外定義
         train_data = pd.DataFrame(X_train, columns=attributes)
         train_data['class'] = y_train
         test_data = pd.DataFrame(X_test, columns=attributes)
@@ -128,14 +78,18 @@ def test_save_models(file_path, target_column, model_config):
 
         # 取得兩種模型
         pso_temp_models = pso_fold_data["PSO_TRENB"]
-        bagging_trenb_models = bagging_fold_data["Bagging"]
+        bagging_temp_models = bagging_fold_data["Bagging"]
 
         # 每個基本模型對測試集樣本的預測
         model_test_predictions = []
 
         # 隨機抽取 25 個模型
-        selected_bagging_models = random.sample(bagging_trenb_models, k=25)
+        selected_bagging_models = random.sample(bagging_temp_models, k=25)
         selected_pso_models = random.sample(pso_temp_models, k=25)
+
+        # 存好每次挑選出來的混合模型，方便後續最佳化使用
+        fold_models[f"fold_{fold + 1}"] = {}
+        fold_models[f"fold_{fold + 1}"]["PSO_Bagging"] = selected_bagging_models + selected_pso_models
 
         """
         以下開始進行訓練集與測試集預測 (還未集成挑選)
@@ -145,23 +99,23 @@ def test_save_models(file_path, target_column, model_config):
         for model in selected_bagging_models:
             prior, p_Xi_Cj_dict, att_value_counts, nj = model   
             # 訓練集預測
-            pred_vector, pred_class = bagging_predict(nj, train_data, prior, p_Xi_Cj_dict, att_value_counts)
+            pred_vector, pred_class = bagging.predict(nj, train_data, prior, p_Xi_Cj_dict, att_value_counts)
             training_accuracies.append(np.mean(y_train == pred_class))  # 記錄訓練集準確率
             data_filter_table[f"fold_{fold + 1}"].append(pred_vector)  # 儲存該基本模型對所有樣本的預測向量
 
             # 測試集預測
-            pred_vector, pred_class = bagging_predict(nj, test_data, prior, p_Xi_Cj_dict, att_value_counts)
+            pred_vector, pred_class = bagging.predict(nj, test_data, prior, p_Xi_Cj_dict, att_value_counts)
             model_test_predictions.append(pred_class)  # 基本模型 i 對所有測試樣本的預測結果
 
         # PSO 方法預測測
         for model in selected_pso_models:
             prior, likelihood = model 
-            pred_vector, pred_class = pso_predict(X_train, prior, likelihood)
+            pred_vector, pred_class = PSO_TRENB.predict(X_train, prior, likelihood)
             training_accuracies.append(np.mean(y_train == pred_class))  
             data_filter_table[f"fold_{fold + 1}"].append(pred_vector)  
 
             # 測試集預測
-            pred_vector, pred_class = pso_predict(X_test, prior, likelihood)
+            pred_vector, pred_class = PSO_TRENB.predict(X_test, prior, likelihood)
             model_test_predictions.append(pred_class)  # 基本模型 i 對所有測試樣本的預測結果
 
 
@@ -187,6 +141,14 @@ def test_save_models(file_path, target_column, model_config):
     write_json_data(path["training_accuracy_path"], dataset_name, training_accuracies)  # 將五折交叉驗證中的訓練集樣本預測正確率寫入
     write_json_data(path["training_pred_vector_path"], dataset_name, data_filter_table)  # 將五折交叉驗證中的訓練集樣本預測向量寫入
     write_json_data(path["data_filter_reserved_path"] , dataset_name, X_reserved) 
+
+    # 保存模型至文件
+    output_path = os.path.join(path["model_path"], f"{dataset_name}_models.pkl")
+    with open(output_path, 'wb') as f:
+        pickle.dump(fold_models, f)
+
+    print(f"模型已保存至 {output_path}")
+    
     
     return np.mean(training_accuracies), np.mean(test_accuracies)
 
