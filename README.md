@@ -122,10 +122,6 @@ flowchart TD
     L --> M[評估挑選後模型<br/>測試集準確率]
     M --> N[輸出最終結果]
     end
-    
-    style C fill:#fff4e1
-    style D fill:#fff4e1
-    style L fill:#ffe1f5
 ```
 
 ---
