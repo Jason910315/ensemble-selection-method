@@ -63,6 +63,22 @@ PATH = {
         "model_path": os.path.join(MODEL_DIR, "Bagging"),
         # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
         "es_result_path": os.path.join(ES_RESULT_DIR, "Bagging.csv"),
+    },
+    "PSO_Bagging":{
+        # 實驗結果儲存路徑
+        "log_file": os.path.join(ACCURACY_RESULT_DIR, "PSO_Bagging.csv"),
+        # 基本模型訓練集正確率儲存路徑
+        "training_accuracy_path": os.path.join(TRAING_ACCURACY_RESULT_DIR, "PSO_Bagging.json"),
+        # 基本模型訓練集預測向量儲存路徑
+        "training_pred_vector_path": os.path.join(TRAINING_PRED_VECTOR_DIR, "PSO_Bagging.json"),
+        # 資料過濾保留樣本儲存路徑
+        "data_filter_reserved_path": os.path.join(DATA_FILTER_RESERVED_DIR, "PSO_Bagging.json"),
+        # 資料過濾筆數與比例儲存路徑
+        "data_filter_result_path": os.path.join(DATA_FILTER_RESULT_DIR, "PSO_Bagging.csv"),
+        # 模型儲存路徑
+        "model_path": os.path.join(MODEL_DIR, "PSO_Bagging"),
+        # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
+        "es_result_path": os.path.join(ES_RESULT_DIR, "PSO_Bagging.csv"),
     }
 }
 
@@ -91,7 +107,8 @@ DATASET_LIST = ["Abalone_3class",
                 "Winequality-white",
                 "Yeast",
                 "Zoo"]
-# DATASET_LIST = ["Abalone_3class","Acoustic"]
+
+# DATASET_LIST = ["Ecoli"]
 
 # 5. fitness function 設定 ---
 class FitnessFunction:
