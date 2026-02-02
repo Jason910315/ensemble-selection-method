@@ -7,7 +7,6 @@
 - **Bagging**：透過 Bootstrap 抽樣建立多個基本模型
 - **資料過濾**：過濾訓練樣本以減少限制式數量。
 - **集成挑選**：使用 Gurobi 進行整數規劃，從基本模型中選出最佳子集
----
 
 ## Project Architecture
 ```
@@ -98,8 +97,9 @@ multiclass_code/
 
 ## 實驗流程
 ```mermaid
-flowchart TD
+graph TD
     subgraph 基本模型訓練
+    direction TB
     A[資料前處理 and <br/>五折交叉驗證分割] --> B{選擇方法}
     B -->|PSO_TRENB| C[PSO 優化<br/>Naive Bayes]
     B -->|Bagging| D[Bootstrap 抽樣<br/>訓練 Naive Bayes]
@@ -117,6 +117,7 @@ flowchart TD
     end
     
     subgraph 集成挑選
+    direction TB
     K[讀取基本模型資訊]
     K --> L[Gurobi 整數規劃<br/>進行集成挑選]
     L --> M[評估挑選後模型<br/>測試集準確率]
@@ -124,7 +125,6 @@ flowchart TD
     end
 ```
 
----
 ### 內部細節說明
 #### 1. 資料前處理
 
@@ -208,8 +208,6 @@ For each 保留樣本 j:
 
 預設包含多個多類別資料集，可在 `config.py` 中修改。
 
----
-
 ## 使用方法
 
 ### 環境需求
@@ -239,7 +237,7 @@ uv run run.py      # 可在 run.py 內選擇執行的腳本
 uv run data_preprocessing.py
 uv run optimize.py
 ```
----
+
 ## 注意事項
 
 1. **資料格式**：原始資料集必須包含名為 `class` 的目標變數欄位
