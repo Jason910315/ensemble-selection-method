@@ -13,8 +13,8 @@ MODEL_CONFIG = {
 
 # 2. ---PSO 超參數設定 (Hyperparameters)---
 PSO_CONFIG = {
-    'num_particles': 50,    # 粒子數量
-    'max_iter': 1000,        # 最大迭代次數
+    'num_particles': 100,    # 粒子數量
+    'max_iter': 200,        # 最大迭代次數
     'w': 0.9,               # 慣性權重 (Inertia Weight)
     'c1': 2.0,              # 個體學習因子 (Cognitive)
     'c2': 2.0,              # 群體學習因子 (Social)
