@@ -156,9 +156,8 @@ class OptimizeModel:
         avg_test_accuracy = results_df['test_accuracy'].mean()
         avg_gap = results_df['gap'].mean()
 
-        with open(path["es_result_path"], mode='w', encoding='utf-8', newline='') as csvfile:
+        with open(path["es_result_path"], mode='a', encoding='utf-8', newline='') as csvfile:
             writer = csv.writer(csvfile)    
-            writer.writerow(["Dataset", "Obj", "Sample Nums", "Test Accuracy", "Gap"])
             if model.status == GRB.OPTIMAL or model.status == GRB.TIME_LIMIT:
                 writer.writerow([dataset_name, avg_obj, avg_sample_nums, avg_test_accuracy, avg_gap])
             else:
@@ -244,10 +243,14 @@ if __name__ == "__main__":
 
     # 初始化最佳化模型物件
     OptimizeModel = OptimizeModel()
+    path = config.PATH.get("PSO_TRENB")
+    with open(path["es_result_path"], mode='w', encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)    
+        writer.writerow(["Dataset", "Obj", "Sample Nums", "Test Accuracy", "Gap"])
 
     for dataset in dataset_list:
         try:
-            result = OptimizeModel.run_optimize_model(dataset, "PSO_Bagging")
+            result = OptimizeModel.run_optimize_model(dataset, "PSO_TRENB")
         except Exception as e:
             error_detail = traceback.format_exc()
             print(f"資料集 {dataset} 最佳化模型求解發生錯誤: {error_detail}")

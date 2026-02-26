@@ -4,7 +4,7 @@ import optimize
 import config
 
 # 模型訓練程式清單
-scripts = ["PSO_Bagging.py"]
+scripts = ["PSO_TRENB.py"]
 
 # 逐一執行
 for script in scripts:
