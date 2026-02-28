@@ -219,7 +219,7 @@ class OptimizeModel:
                 model_test_predictions[:, i] = pred_class  # 基本模型 i 對所有測試樣本的預測結果
 
             elif ensemble_method == "PSO_Bagging":
-                # 代表被挑到的是 PSO 的模型
+                # 代表被挑到的是 PSO 的模型 (參數量不同)
                 if len(base_models[select_idx]) == 2:
                     prior, likelihood = base_models[select_idx]
                     pred_vector, pred_class = PSO_TRENB.predict(X_test, prior, likelihood)
