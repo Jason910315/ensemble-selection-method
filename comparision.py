@@ -1,4 +1,5 @@
 
+import time
 import math, traceback, csv
 import config
 from pathlib import Path
@@ -137,10 +138,14 @@ class COMEP:
 
         selected_results = {f"fold_{fold}": [] for fold in range(1, 6)}
 
+        results = []
+
         # --- 執行 COMEP ---
         try:
             # 每個 key: value 是 "fold_1": []...，陣列 shape = (N, B, C)
             for fold, fold_pred_vector in pred_vector.items():
+
+                start_time = time.time()
 
                 models_info = bagging_models[fold]     # 裡面儲存該 fold 的模型資訊
                 fold_pred_vector = np.array(fold_pred_vector)
@@ -152,11 +157,12 @@ class COMEP:
 
                 true_class = models_info["train_class"]   # 一個 list，代表樣本實際的類別
         
-                # 逐步選擇剩餘的模型 (也就是迴圈要再跑 b-1 次)
+                # 逐步選擇剩餘的模型 (也就是迴圈要再跑 b-1 次，再選 b-1 個模型)
                 while len(selected_models) < b:
-                    best_tdac = 0.0
+                    best_tdac = -float('inf')
+                    best_candidate = -1  # 記錄每次迴圈最好的基本模型
 
-                    for i in range(b):
+                    for i in range(m):
                         # 每次都是從還沒被挑到的模型內選選一個最好的
                         if i in selected_models:
                             continue
@@ -182,9 +188,14 @@ class COMEP:
 
                             total_tdac += tdac_i_j
                         
+                        # 代表這次基本模型 i 加入後，tdac 更好
                         if total_tdac > best_tdac:
                             best_tdac = total_tdac
-                            selected_models.append(i)  # 將基本模型 i 加入挑選
+                            best_candidate = i
+                    
+                    # 會在 m 個模型中找到一個最好的
+                    if best_candidate != -1:
+                        selected_models.append(best_candidate)
 
                 selected_results[f"fold_{fold}"] = selected_models
 
@@ -192,10 +203,27 @@ class COMEP:
                 test_accuracy = self.eval_ensemble_selection(dataset_name, fold, selected_models, ensemble_method)
                 print(f"Fold {fold} : {selected_models}, Test Accuracy: {test_accuracy}")
 
+                exec_time = time.time() - start_time
+
+                results.append({
+                    "fold": fold,    
+                    "test_accuracy": test_accuracy,
+                    "exec_time": exec_time
+                })
+
+            results_df = pd.DataFrame(results)
+            avg_test_accuracy = results_df['test_accuracy'].mean()
+            avg_exec_time = results_df['exec_time'].mean()
+
+            with open(path["comep_result_path"], mode='a', encoding='utf-8', newline='') as csvfile:
+                writer = csv.writer(csvfile)    
+                writer.writerow([dataset_name, avg_test_accuracy, avg_exec_time])
+
         except Exception as e:
             error_detail = traceback.format_exc()
             print(f"Error in run_comep_selection: {error_detail}")
             return None
+    
 
         print("Comep selection 完成\n------------------------------------------------------")
 
@@ -276,11 +304,17 @@ if __name__ == "__main__":
 
     comep = COMEP()
 
+    path = config.PATH.get("PSO_TRENB")
+    with open(path["comep_result_path"], mode='w', encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)    
+        writer.writerow(["Dataset", "Test Accuracy", "Time"])
+
     for dataset in dataset_list:
-        result = comep.run_comep_selection(dataset, "PSO_TRENB")
-
-
-
-
+        try:
+            result = comep.run_comep_selection(dataset, "PSO_TRENB")
+        except Exception as e:
+            error_detail = traceback.format_exc()
+            print(f"資料集 {dataset} COMEP selection 發生錯誤: {error_detail}")
+            continue
 
             
