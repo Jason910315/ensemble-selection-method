@@ -70,7 +70,7 @@ def test_save_models(file_path, target_column, model_config):
         X_train = X[train_index]
         y_train = y[train_index]
 
-        # bagging 預測格是要額外定義
+        # bagging 預測格式要額外定義
         train_data = pd.DataFrame(X_train, columns=attributes)
         train_data['class'] = y_train
         test_data = pd.DataFrame(X_test, columns=attributes)

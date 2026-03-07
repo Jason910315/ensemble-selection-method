@@ -30,6 +30,7 @@ DATA_FILTER_RESERVED_DIR = os.path.join(PARENT_DIR, "data_filter_reserved")
 DATA_FILTER_RESULT_DIR = os.path.join(PARENT_DIR, "data_filter_res")
 MODEL_DIR = os.path.join(PARENT_DIR, "temp_models")
 ES_RESULT_DIR = os.path.join(PARENT_DIR, "selection_result")  # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
+COMEP_RESULT_DIR = os.path.join(PARENT_DIR, "comep_result")   # 比較對象
 
 PATH = {
     "PSO_TRENB":{
@@ -47,6 +48,8 @@ PATH = {
         "model_path": os.path.join(MODEL_DIR, "PSO_TRENB"),
         # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
         "es_result_path": os.path.join(ES_RESULT_DIR, "PSO_TRENB.csv"),
+        # 比較對象儲存路徑
+        "comep_result_path": os.path.join(COMEP_RESULT_DIR, "PSO_TRENB.csv"),
     },
     "Bagging":{
         # 實驗結果儲存路徑
@@ -63,6 +66,8 @@ PATH = {
         "model_path": os.path.join(MODEL_DIR, "Bagging"),
         # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
         "es_result_path": os.path.join(ES_RESULT_DIR, "Bagging.csv"),
+        # 比較對象儲存路徑
+        "comep_result_path": os.path.join(COMEP_RESULT_DIR, "Bagging.csv"),
     },
     "PSO_Bagging":{
         # 實驗結果儲存路徑
@@ -79,6 +84,8 @@ PATH = {
         "model_path": os.path.join(MODEL_DIR, "PSO_Bagging"),
         # 集成挑選後的模型索引，以及集成挑選後的測試集正確率儲存路徑
         "es_result_path": os.path.join(ES_RESULT_DIR, "PSO_Bagging.csv"),
+        # 比較對象儲存路徑
+        "comep_result_path": os.path.join(COMEP_RESULT_DIR, "PSO_Bagging.csv"),
     }
 }
 

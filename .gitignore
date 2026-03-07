@@ -19,6 +19,7 @@ data_filter_reserved/
 data_filter_res/
 temp_models/
 selection_result/
+comep_result/
 datasets/
 data_filter_var.xlsx
 class_balance_summary.xlsx
